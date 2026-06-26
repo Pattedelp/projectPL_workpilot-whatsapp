@@ -2,13 +2,13 @@ require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const twilio = require("twilio");
+const path = require("path");
 const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 app.use(express.json());
-const path = require("path");
-app.use("/panel", express.static(path.join(__dirname, "panel")));
 app.use(express.urlencoded({ extended: false }));
+app.use("/panel", express.static(path.join(__dirname, "panel")));
 
 const PORT = process.env.PORT || 10000;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -29,23 +29,20 @@ app.get("/", async (req, res) => {
   res.json({ status: "ok", negocios: negocios?.length || 0 });
 });
 
-// Servir el panel web
-app.use("/panel", express.static(path.join(__dirname, "panel")));
-
 // ── Recibir mensajes de WhatsApp via Twilio ───────────────────────────────────
 app.post("/webhook", async (req, res) => {
   res.sendStatus(200);
 
   try {
-    const from = req.body.From; // ej: whatsapp:+5491168936347
-    const to = req.body.To; // ej: whatsapp:+14155238886 (número del negocio)
+    const from = req.body.From;
+    const to = req.body.To;
     const texto = req.body.Body;
 
     if (!from || !texto) return;
 
     console.log(`📩 [${to}] Mensaje de ${from}: ${texto}`);
     console.log(`🔍 Buscando negocio con número: "${to}"`);
-    // Identificar el negocio por el número de WhatsApp
+
     const negocio = await obtenerNegocio(to);
     if (!negocio) {
       console.log(`⚠️ No se encontró negocio para el número ${to}`);
@@ -53,8 +50,9 @@ app.post("/webhook", async (req, res) => {
     }
     console.log("✅ Negocio OK:", negocio.id);
 
-    // Verificar horario de atención
     const config = await obtenerConfiguracion(negocio.id);
+    console.log("✅ Config OK:", config?.id || "sin config");
+
     if (!estaEnHorario()) {
       await enviarMensaje(
         from,
@@ -64,19 +62,16 @@ app.post("/webhook", async (req, res) => {
       return;
     }
 
-    // Obtener o crear conversación
     const conversacion = await obtenerOCrearConversacion(negocio.id, from);
+    console.log("✅ Conversacion OK:", conversacion?.id || "null");
 
-    // Guardar mensaje del cliente
     await guardarMensaje(conversacion.id, "cliente", texto);
 
-    // Obtener historial reciente
     const historial = await obtenerHistorial(conversacion.id);
+    console.log("✅ Historial OK:", historial.length, "mensajes");
 
-    // Cargar catálogo del negocio
     const catalogo = await obtenerCatalogo(negocio.id);
 
-    // Procesar con Claude o respuestas predefinidas
     const respuesta = await procesarMensaje(
       texto,
       negocio,
@@ -86,24 +81,14 @@ app.post("/webhook", async (req, res) => {
       conversacion,
     );
 
-    const config = await obtenerConfiguracion(negocio.id);
-    console.log("✅ Config OK:", config?.id || "sin config");
-
-    const conversacion = await obtenerOCrearConversacion(negocio.id, from);
-    console.log("✅ Conversacion OK:", conversacion?.id || "null");
-
-    const historial = await obtenerHistorial(conversacion.id);
-    console.log("✅ Historial OK:", historial.length, "mensajes");
-
-    // Guardar respuesta del agente
     await guardarMensaje(conversacion.id, "agente", respuesta);
 
-    // Enviar respuesta
     await enviarMensaje(from, respuesta);
 
     console.log(`✅ Respuesta enviada a ${from}`);
   } catch (err) {
     console.error("Error procesando mensaje:", err.message);
+    console.error(err.stack);
   }
 });
 
@@ -147,7 +132,6 @@ async function obtenerCatalogo(negocioId) {
 }
 
 async function obtenerOCrearConversacion(negocioId, telefonoCliente) {
-  // Buscar conversación existente
   const { data: existente } = await supabase
     .from("conversaciones")
     .select("*")
@@ -156,7 +140,6 @@ async function obtenerOCrearConversacion(negocioId, telefonoCliente) {
     .maybeSingle();
 
   if (existente) {
-    // Actualizar updated_at
     await supabase
       .from("conversaciones")
       .update({ updated_at: new Date().toISOString() })
@@ -164,7 +147,6 @@ async function obtenerOCrearConversacion(negocioId, telefonoCliente) {
     return existente;
   }
 
-  // Crear nueva conversación
   const { data: nueva } = await supabase
     .from("conversaciones")
     .insert([{ negocio_id: negocioId, telefono_cliente: telefonoCliente }])
@@ -185,22 +167,19 @@ async function obtenerHistorial(conversacionId) {
     .select("rol, contenido")
     .eq("conversacion_id", conversacionId)
     .order("created_at", { ascending: true })
-    .limit(10); // últimos 10 mensajes para contexto
-
+    .limit(10);
   return data || [];
 }
 
 // ── Horario de atención ───────────────────────────────────────────────────────
 function estaEnHorario() {
   const ahora = new Date();
-  // Convertir a hora Argentina (UTC-3)
   const horaAR = new Date(ahora.getTime() - 3 * 60 * 60 * 1000);
-  const dia = horaAR.getDay(); // 0=domingo, 1=lunes...6=sábado
+  const dia = horaAR.getDay();
   const hora = horaAR.getHours();
-
-  if (dia === 0) return false; // domingo cerrado
-  if (dia === 6) return hora >= 8 && hora < 13; // sábado 8-13
-  return hora >= 8 && hora < 18; // lunes a viernes 8-18
+  if (dia === 0) return false;
+  if (dia === 6) return hora >= 8 && hora < 13;
+  return hora >= 8 && hora < 18;
 }
 
 // ── Procesar mensaje ──────────────────────────────────────────────────────────
@@ -214,7 +193,6 @@ async function procesarMensaje(
 ) {
   const m = mensaje.toLowerCase();
 
-  // Detectar si quiere hablar con humano
   if (
     m.includes("hablar con alguien") ||
     m.includes("persona") ||
@@ -227,7 +205,6 @@ async function procesarMensaje(
     return `Te comunico con el equipo de ${sucursal?.nombre || "nuestro local"}. Podés llamarnos al ${sucursal?.telefono || config?.derivar_telefono} 📞`;
   }
 
-  // Si no tiene zona asignada y no es el primer saludo, preguntar zona
   if (!conversacion.zona && historial.length >= 2) {
     const yaPreguntoZona = historial.some(
       (h) =>
@@ -239,26 +216,22 @@ async function procesarMensaje(
     }
   }
 
-  // Detectar si el mensaje es una zona
   if (!conversacion.zona && historial.length >= 2) {
     const sucursalCercana = detectarSucursalPorZona(
       mensaje,
       catalogo.sucursales,
     );
     if (sucursalCercana) {
-      // Guardar zona y sucursal en la conversación
       await supabase
         .from("conversaciones")
         .update({ zona: mensaje, sucursal_id: sucursalCercana.id })
         .eq("id", conversacion.id);
       conversacion.zona = mensaje;
       conversacion.sucursal_id = sucursalCercana.id;
-
       return `Perfecto, te asigno al local de *${sucursalCercana.nombre}* (${sucursalCercana.direccion}). ¿En qué te puedo ayudar? 😊`;
     }
   }
 
-  // Obtener sucursal del cliente (la asignada o la primera por defecto)
   const sucursalCliente = conversacion.sucursal_id
     ? catalogo.sucursales.find((s) => s.id === conversacion.sucursal_id)
     : catalogo.sucursales[0];
@@ -286,7 +259,6 @@ async function procesarMensaje(
 function detectarSucursalPorZona(mensaje, sucursales) {
   const m = mensaje.toLowerCase();
 
-  // Buscar coincidencia directa con nombre o dirección de sucursal
   for (const s of sucursales) {
     const nombreLower = s.nombre.toLowerCase();
     const dirLower = (s.direccion || "").toLowerCase();
@@ -299,7 +271,6 @@ function detectarSucursalPorZona(mensaje, sucursales) {
     }
   }
 
-  // Mapeo de zonas comunes de Buenos Aires
   const zonas = {
     norte: [
       "norte",
@@ -325,7 +296,6 @@ function detectarSucursalPorZona(mensaje, sucursales) {
 
   for (const [zona, keywords] of Object.entries(zonas)) {
     if (keywords.some((k) => m.includes(k))) {
-      // Buscar sucursal que tenga esa zona en su nombre o dirección
       const match = sucursales.find(
         (s) =>
           s.nombre.toLowerCase().includes(zona) ||
@@ -333,12 +303,10 @@ function detectarSucursalPorZona(mensaje, sucursales) {
           keywords.some((k) => (s.direccion || "").toLowerCase().includes(k)),
       );
       if (match) return match;
-      // Si no hay match específico, devolver la primera sucursal
       return sucursales[0];
     }
   }
 
-  // Si el mensaje parece una zona (texto corto, no una pregunta)
   if (mensaje.split(" ").length <= 4 && !mensaje.includes("?")) {
     return sucursales[0];
   }
@@ -404,7 +372,6 @@ function respuestaPredefinida(
     return `📍 ${localNombre}\n${sucursalCliente?.direccion || ""}\n📞 ${tel}\n\n🕐 ${config?.horario || "Lunes a Viernes 8-18hs"}`;
   }
 
-  // Buscar producto específico
   const productoEncontrado = catalogo.productos.find((p) =>
     p.nombre
       .toLowerCase()
@@ -421,6 +388,7 @@ function respuestaPredefinida(
 
   return `Gracias por contactar a ${negocio.nombre}. 🎨\n\n📍 Tu local: ${localNombre}\n📞 ${tel}\n🕐 ${config?.horario || "Lunes a Viernes 8-18hs"}`;
 }
+
 // ── Procesar con Claude ───────────────────────────────────────────────────────
 async function procesarConClaude(
   mensaje,
@@ -445,7 +413,6 @@ ${catalogo.productos.map((p) => `- ${p.nombre}: $${Number(p.precio).toLocaleStri
 Siempre que derives a un humano, usá el teléfono del local asignado al cliente.
 No inventes información.`;
 
-  // Construir historial para Claude
   const mensajesAPI = historial.map((m) => ({
     role: m.rol === "cliente" ? "user" : "assistant",
     content: m.contenido,
