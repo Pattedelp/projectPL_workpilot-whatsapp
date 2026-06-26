@@ -1,0 +1,66 @@
+{
+  "negocio": "Pinturería Sagitario",
+  "productos": [
+    {
+      "nombre": "Látex interior blanco 4L",
+      "precio": 8500,
+      "stock": 12,
+      "categoria": "Látex interior"
+    },
+    {
+      "nombre": "Látex interior blanco 10L",
+      "precio": 18000,
+      "stock": 8,
+      "categoria": "Látex interior"
+    },
+    {
+      "nombre": "Látex exterior blanco 4L",
+      "precio": 9800,
+      "stock": 5,
+      "categoria": "Látex exterior"
+    },
+    {
+      "nombre": "Esmalte sintético blanco 1L",
+      "precio": 4200,
+      "stock": 3,
+      "categoria": "Esmaltes"
+    },
+    {
+      "nombre": "Esmalte sintético negro 1L",
+      "precio": 4200,
+      "stock": 15,
+      "categoria": "Esmaltes"
+    },
+    {
+      "nombre": "Impermeabilizante 4L",
+      "precio": 12500,
+      "stock": 4,
+      "categoria": "Impermeabilizantes"
+    },
+    {
+      "nombre": "Rodillo lana 23cm",
+      "precio": 1800,
+      "stock": 20,
+      "categoria": "Herramientas"
+    },
+    {
+      "nombre": "Pincel 2 pulgadas",
+      "precio": 850,
+      "stock": 30,
+      "categoria": "Herramientas"
+    }
+  ],
+  "sucursales": [
+    {
+      "nombre": "Casa Central",
+      "direccion": "Av. Corrientes 1234",
+      "telefono": "011-4444-5555"
+    },
+    {
+      "nombre": "Sucursal Norte",
+      "direccion": "Av. Cabildo 567",
+      "telefono": "011-4444-6666"
+    }
+  ],
+  "horario": "Lunes a Viernes de 8 a 18hs, Sábados de 8 a 13hs"
+}
