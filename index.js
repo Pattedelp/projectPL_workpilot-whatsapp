@@ -239,19 +239,28 @@ async function procesarMensaje(
     }
   }
 
-  if (!conversacion.zona && historial.length >= 2) {
-    const sucursalCercana = detectarSucursalPorZona(
-      mensaje,
-      catalogo.sucursales,
+  if (!conversacion.zona && historial.length >= 3) {
+    const yaPreguntoZona = historial.some(
+      (h) =>
+        h.contenido.toLowerCase().includes("zona") ||
+        h.contenido.toLowerCase().includes("barrio"),
     );
-    if (sucursalCercana) {
-      await supabase
-        .from("conversaciones")
-        .update({ zona: mensaje, sucursal_id: sucursalCercana.id })
-        .eq("id", conversacion.id);
-      conversacion.zona = mensaje;
-      conversacion.sucursal_id = sucursalCercana.id;
-      return `Perfecto, te asigno al local de *${sucursalCercana.nombre}* (${sucursalCercana.direccion}). ¿En qué te puedo ayudar? 😊`;
+    if (yaPreguntoZona) {
+      const sucursalCercana = detectarSucursalPorZona(
+        mensaje,
+        catalogo.sucursales,
+      );
+      if (sucursalCercana) {
+        await supabase
+          .from("conversaciones")
+          .update({ zona: mensaje, sucursal_id: sucursalCercana.id })
+          .eq("id", conversacion.id);
+        conversacion.zona = mensaje;
+        conversacion.sucursal_id = sucursalCercana.id;
+        return `Perfecto, te asigno al local de *${sucursalCercana.nombre}* (${sucursalCercana.direccion}). ¿En qué te puedo ayudar? 😊`;
+      } else {
+        return `No pude encontrar una sucursal cercana a "${mensaje}". ¿Podés indicar un barrio o zona? Por ejemplo: Palermo, Belgrano, Centro, Flores. 📍`;
+      }
     }
   }
 
