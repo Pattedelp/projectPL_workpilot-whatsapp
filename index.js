@@ -99,18 +99,15 @@ app.post("/webhook", async (req, res) => {
 
 // ── Funciones de base de datos ────────────────────────────────────────────────
 async function obtenerNegocio(whatsappNumber) {
-  // Normalizar el número — probar con y sin prefijo whatsapp:
-  const numeroLimpio = whatsappNumber.replace("whatsapp:", "");
-
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("negocios")
     .select("*")
-    .or(
-      `whatsapp_number.eq.${whatsappNumber},whatsapp_number.eq.${numeroLimpio}`,
-    )
+    .eq("whatsapp_number", whatsappNumber)
     .eq("activo", true)
-    .single();
+    .maybeSingle();
 
+  if (error) console.log("Error buscando negocio:", error.message);
+  console.log("Negocio encontrado:", data?.nombre || "ninguno");
   return data;
 }
 
