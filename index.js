@@ -6,7 +6,7 @@ const fs = require("fs");
 const app = express();
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
