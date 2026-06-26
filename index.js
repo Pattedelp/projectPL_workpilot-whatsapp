@@ -363,7 +363,7 @@ function respuestaPredefinida(
   if (m.includes("hola") || m.includes("buenas") || m.includes("buen")) {
     return (
       config?.mensaje_bienvenida ||
-      `¡Hola! 👋 Bienvenido a ${negocio.nombre}. ¿En qué te puedo ayudar?\n\n• 🎨 Precios\n• 📦 Stock\n• 🕐 Horarios\n• 📍 Ubicaciones`
+      `¡Hola! 👋 Bienvenido a ${negocio.nombre}. ¿Cuál es su consulta?\n\n• 🎨 Precios\n• 📦 Stock\n• 🕐 Horarios\n• 📍 Ubicaciones`
     );
   }
 
