@@ -132,12 +132,14 @@ async function obtenerCatalogo(negocioId) {
 }
 
 async function obtenerOCrearConversacion(negocioId, telefonoCliente) {
-  const { data: existente } = await supabase
+  const { data: nueva, error: errorNueva } = await supabase
     .from("conversaciones")
-    .select("*")
-    .eq("negocio_id", negocioId)
-    .eq("telefono_cliente", telefonoCliente)
-    .maybeSingle();
+    .insert([{ negocio_id: negocioId, telefono_cliente: telefonoCliente }])
+    .select()
+    .single();
+  if (errorNueva)
+    console.error("Error creando conversación:", errorNueva.message);
+  return nueva;
 
   if (existente) {
     await supabase
