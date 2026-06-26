@@ -534,6 +534,17 @@
             id="header-email"
           ></span>
           <button
+            id="btn-notif"
+            onclick="activarSonido()"
+            style="
+              padding: 0.35rem 0.85rem;
+              font-size: 0.8rem;
+              background: var(--border);
+            "
+          >
+            🔔 Activar sonido
+          </button>
+          <button
             class="secondary"
             onclick="cerrarSesion()"
             style="padding: 0.35rem 0.85rem; font-size: 0.8rem"
@@ -781,6 +792,25 @@
       });
 
       // ── Conversaciones ─────────────────────────────────────────────────────────
+      let sonidoActivado = false;
+
+      function activarSonido() {
+        const audio = document.getElementById("notif-sound");
+        audio
+          .play()
+          .then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            sonidoActivado = true;
+            document.getElementById("btn-notif").textContent =
+              "🔔 Sonido activo";
+            document.getElementById("btn-notif").style.background =
+              "rgba(34,197,94,0.2)";
+            document.getElementById("btn-notif").style.color = "var(--green)";
+            document.getElementById("btn-notif").onclick = null;
+          })
+          .catch((e) => console.log("Error:", e));
+      }
       let ultimaCantMensajes = 0;
 
       async function cargarConversaciones() {
@@ -863,7 +893,11 @@
         // Contar total de mensajes para detectar nuevos
         const totalMensajes =
           data?.reduce((acc, c) => acc + (c.mensajes?.length || 0), 0) || 0;
-        if (ultimaCantMensajes > 0 && totalMensajes > ultimaCantMensajes) {
+        if (
+          ultimaCantMensajes > 0 &&
+          totalMensajes > ultimaCantMensajes &&
+          sonidoActivado
+        ) {
           document.getElementById("notif-sound")?.play();
         }
         ultimaCantMensajes = totalMensajes;
