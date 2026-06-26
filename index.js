@@ -65,7 +65,7 @@ app.post("/webhook", async (req, res) => {
       return;
     }
 
-    const conversacion = await obtenerOCrearConversacion(negocio.id, from);
+    const conversacion = await zConversacion(negocio.id, from);
     console.log("✅ Conversacion OK:", conversacion?.id || "null");
 
     await guardarMensaje(conversacion.id, "cliente", texto);
@@ -143,6 +143,23 @@ async function obtenerOCrearConversacion(negocioId, telefonoCliente) {
     .maybeSingle();
 
   if (existente) {
+    const ahora = new Date();
+    const ultimaActividad = new Date(existente.updated_at);
+    const horasSinActividad = (ahora - ultimaActividad) / (1000 * 60 * 60);
+
+    // Si pasaron más de 24hs, resetear zona y sucursal
+    if (horasSinActividad > 24) {
+      await supabase
+        .from("conversaciones")
+        .update({
+          zona: null,
+          sucursal_id: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existente.id);
+      return { ...existente, zona: null, sucursal_id: null };
+    }
+
     await supabase
       .from("conversaciones")
       .update({ updated_at: new Date().toISOString() })
