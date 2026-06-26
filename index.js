@@ -19,7 +19,10 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
 const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(
+  SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY,
+);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get("/", async (req, res) => {
