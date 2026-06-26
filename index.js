@@ -34,7 +34,7 @@ app.get("/", async (req, res) => {
 
 // ── Recibir mensajes de WhatsApp via Twilio ───────────────────────────────────
 app.post("/webhook", async (req, res) => {
-  res.sendStatus(200);
+  res.status(200).end();
 
   try {
     const from = req.body.From;
@@ -65,7 +65,7 @@ app.post("/webhook", async (req, res) => {
       return;
     }
 
-    const conversacion = await conversacion(negocio.id, from);
+    const conversacion = await obtenerOCrearConversacion(negocio.id, from);
     console.log("✅ Conversacion OK:", conversacion?.id || "null");
 
     await guardarMensaje(conversacion.id, "cliente", texto);
