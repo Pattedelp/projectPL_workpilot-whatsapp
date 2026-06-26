@@ -65,7 +65,7 @@ app.post("/webhook", async (req, res) => {
       return;
     }
 
-    const conversacion = await zConversacion(negocio.id, from);
+    const conversacion = await Conversacion(negocio.id, from);
     console.log("✅ Conversacion OK:", conversacion?.id || "null");
 
     await guardarMensaje(conversacion.id, "cliente", texto);
