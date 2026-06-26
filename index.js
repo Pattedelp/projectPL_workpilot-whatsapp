@@ -116,7 +116,7 @@ async function obtenerConfiguracion(negocioId) {
     .from("configuracion")
     .select("*")
     .eq("negocio_id", negocioId)
-    .single();
+    .maybeSingle();
   return data;
 }
 
@@ -143,7 +143,7 @@ async function obtenerOCrearConversacion(negocioId, telefonoCliente) {
     .select("*")
     .eq("negocio_id", negocioId)
     .eq("telefono_cliente", telefonoCliente)
-    .single();
+    .maybeSingle();
 
   if (existente) {
     // Actualizar updated_at
@@ -159,7 +159,7 @@ async function obtenerOCrearConversacion(negocioId, telefonoCliente) {
     .from("conversaciones")
     .insert([{ negocio_id: negocioId, telefono_cliente: telefonoCliente }])
     .select()
-    .single();
+    .maybeSingle();
   return nueva;
 }
 
