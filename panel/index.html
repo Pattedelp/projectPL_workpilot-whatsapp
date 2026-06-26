@@ -5,19 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Workpilot Agent — Panel</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <audio id="notif-sound" preload="auto">
-      <source
-        src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
-        type="audio/mpeg"
-      />
-    </audio>
+    <audio
+      id="notif-sound"
+      preload="auto"
+      src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
+    ></audio>
     <style>
       * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
       }
-
       :root {
         --bg: #0f1117;
         --card: #1a1d27;
@@ -29,22 +27,18 @@
         --red: #ef4444;
         --amber: #f59e0b;
       }
-
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         background: var(--bg);
         color: var(--text);
         min-height: 100vh;
       }
-
-      /* ── Login ── */
       #login-screen {
         display: flex;
         align-items: center;
         justify-content: center;
         min-height: 100vh;
       }
-
       .login-box {
         background: var(--card);
         border: 1px solid var(--border);
@@ -53,23 +47,19 @@
         width: 100%;
         max-width: 380px;
       }
-
       .login-logo {
         font-size: 1.8rem;
         margin-bottom: 0.5rem;
       }
-
       .login-box h1 {
         font-size: 1.4rem;
         margin-bottom: 0.3rem;
       }
-
       .login-box p {
         color: var(--muted);
         font-size: 0.85rem;
         margin-bottom: 2rem;
       }
-
       input,
       select {
         width: 100%;
@@ -83,12 +73,10 @@
         outline: none;
         transition: border-color 0.2s;
       }
-
       input:focus,
       select:focus {
         border-color: var(--primary);
       }
-
       button {
         background: var(--primary);
         color: white;
@@ -100,7 +88,6 @@
         transition: opacity 0.2s;
         font-weight: 500;
       }
-
       button:hover {
         opacity: 0.85;
       }
@@ -111,10 +98,6 @@
       button.secondary {
         background: var(--border);
       }
-      button.danger {
-        background: var(--red);
-      }
-
       .error-msg {
         color: var(--red);
         font-size: 0.78rem;
@@ -124,12 +107,9 @@
         border-radius: 6px;
         padding: 0.5rem 0.75rem;
       }
-
-      /* ── App ── */
       #app {
         display: none;
       }
-
       header {
         background: var(--card);
         border-bottom: 1px solid var(--border);
@@ -139,13 +119,11 @@
         align-items: center;
         justify-content: space-between;
       }
-
       .header-left {
         display: flex;
         align-items: center;
         gap: 0.75rem;
       }
-
       header h1 {
         font-size: 0.95rem;
         font-weight: 600;
@@ -158,13 +136,10 @@
         border-radius: 99px;
         font-weight: 500;
       }
-
       .main-layout {
         display: flex;
         height: calc(100vh - 56px);
       }
-
-      /* ── Sidebar ── */
       .sidebar {
         width: 270px;
         background: var(--card);
@@ -173,7 +148,6 @@
         flex-direction: column;
         overflow: hidden;
       }
-
       .sidebar-header {
         padding: 0.875rem 1rem;
         border-bottom: 1px solid var(--border);
@@ -181,7 +155,6 @@
         align-items: center;
         justify-content: space-between;
       }
-
       .sidebar-header span {
         font-size: 0.75rem;
         color: var(--muted);
@@ -189,7 +162,6 @@
         letter-spacing: 0.05em;
         font-weight: 600;
       }
-
       .sidebar-header .count {
         background: var(--border);
         color: var(--muted);
@@ -197,19 +169,16 @@
         padding: 1px 7px;
         border-radius: 99px;
       }
-
       .conv-list {
         overflow-y: auto;
         flex: 1;
       }
-
       .conv-item {
         padding: 0.875rem 1rem;
         border-bottom: 1px solid var(--border);
         cursor: pointer;
         transition: background 0.15s;
       }
-
       .conv-item:hover {
         background: rgba(255, 255, 255, 0.04);
       }
@@ -217,13 +186,11 @@
         background: rgba(59, 130, 246, 0.08);
         border-left: 3px solid var(--primary);
       }
-
       .conv-item .phone {
         font-size: 0.875rem;
         font-weight: 500;
         margin-bottom: 3px;
       }
-
       .conv-item .last-msg {
         font-size: 0.75rem;
         color: var(--muted);
@@ -232,15 +199,12 @@
         text-overflow: ellipsis;
         max-width: 210px;
       }
-
       .conv-item .time {
         font-size: 0.68rem;
         color: var(--muted);
         float: right;
         margin-top: 2px;
       }
-
-      /* ── Chat ── */
       .chat-area {
         flex: 1;
         display: flex;
@@ -248,7 +212,6 @@
         overflow: hidden;
         background: var(--bg);
       }
-
       .chat-header {
         padding: 1rem 1.5rem;
         border-bottom: 1px solid var(--border);
@@ -257,7 +220,6 @@
         align-items: center;
         gap: 0.75rem;
       }
-
       .chat-header .phone {
         font-weight: 600;
         font-size: 0.9rem;
@@ -266,7 +228,6 @@
         font-size: 0.75rem;
         color: var(--muted);
       }
-
       .chat-empty {
         flex: 1;
         display: flex;
@@ -275,7 +236,6 @@
         color: var(--muted);
         font-size: 0.9rem;
       }
-
       .messages {
         flex: 1;
         overflow-y: auto;
@@ -284,12 +244,10 @@
         flex-direction: column;
         gap: 0.5rem;
       }
-
       .msg-group {
         display: flex;
         flex-direction: column;
       }
-
       .msg {
         max-width: 60%;
         padding: 0.6rem 0.9rem;
@@ -298,31 +256,25 @@
         line-height: 1.5;
         white-space: pre-wrap;
       }
-
       .msg.cliente {
         background: var(--card);
         border: 1px solid var(--border);
         align-self: flex-start;
         border-bottom-left-radius: 4px;
       }
-
       .msg.agente {
         background: var(--primary);
         align-self: flex-end;
         border-bottom-right-radius: 4px;
       }
-
       .msg-time {
         font-size: 0.65rem;
         color: var(--muted);
         margin-top: 3px;
       }
-
       .msg.agente ~ .msg-time {
         text-align: right;
       }
-
-      /* ── Panel derecho ── */
       .right-panel {
         width: 320px;
         background: var(--card);
@@ -331,12 +283,10 @@
         flex-direction: column;
         overflow: hidden;
       }
-
       .tabs {
         display: flex;
         border-bottom: 1px solid var(--border);
       }
-
       .tab {
         flex: 1;
         padding: 0.75rem 0.5rem;
@@ -348,12 +298,10 @@
         transition: all 0.15s;
         font-weight: 500;
       }
-
       .tab.active {
         color: var(--primary);
         border-bottom-color: var(--primary);
       }
-
       .tab-content {
         display: none;
         flex: 1;
@@ -363,22 +311,18 @@
       .tab-content.active {
         display: block;
       }
-
-      /* ── Métricas ── */
       .metric-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 0.75rem;
         margin-bottom: 1.25rem;
       }
-
       .metric-card {
         background: var(--bg);
         border: 1px solid var(--border);
         border-radius: 8px;
         padding: 0.875rem;
       }
-
       .metric-card .label {
         font-size: 0.68rem;
         color: var(--muted);
@@ -386,12 +330,10 @@
         text-transform: uppercase;
         letter-spacing: 0.04em;
       }
-
       .metric-card .value {
         font-size: 1.5rem;
         font-weight: 700;
       }
-
       .section-label {
         font-size: 0.7rem;
         color: var(--muted);
@@ -400,8 +342,6 @@
         margin-bottom: 0.5rem;
         font-weight: 600;
       }
-
-      /* ── Catálogo ── */
       .producto-item {
         background: var(--bg);
         border: 1px solid var(--border);
@@ -409,13 +349,11 @@
         padding: 0.75rem;
         margin-bottom: 0.5rem;
       }
-
       .producto-item .nombre {
         font-size: 0.85rem;
         font-weight: 500;
         margin-bottom: 5px;
       }
-
       .producto-item .detalle {
         font-size: 0.75rem;
         color: var(--muted);
@@ -423,7 +361,6 @@
         gap: 0.75rem;
         align-items: center;
       }
-
       .badge {
         display: inline-block;
         padding: 2px 8px;
@@ -431,7 +368,6 @@
         font-size: 0.68rem;
         font-weight: 600;
       }
-
       .badge.green {
         background: rgba(34, 197, 94, 0.15);
         color: var(--green);
@@ -444,14 +380,12 @@
         background: rgba(245, 158, 11, 0.15);
         color: var(--amber);
       }
-
       .empty {
         text-align: center;
         color: var(--muted);
         font-size: 0.85rem;
         padding: 2rem 1rem;
       }
-
       .form-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -466,7 +400,6 @@
       .form-group {
         margin-bottom: 0.75rem;
       }
-
       .form-box {
         background: var(--bg);
         border: 1px solid var(--border);
@@ -474,7 +407,6 @@
         padding: 0.875rem;
         margin-bottom: 1rem;
       }
-
       ::-webkit-scrollbar {
         width: 4px;
       }
@@ -494,7 +426,6 @@
         <div class="login-logo">🤖</div>
         <h1>Workpilot Agent</h1>
         <p>Ingresá con tu cuenta para acceder al panel</p>
-
         <div class="form-group">
           <label>Email</label>
           <input
@@ -513,7 +444,6 @@
             onkeydown="if (event.key === 'Enter') iniciarSesion();"
           />
         </div>
-
         <button onclick="iniciarSesion()" id="btn-login" style="width: 100%">
           Ingresar
         </button>
@@ -535,14 +465,15 @@
           ></span>
           <button
             id="btn-notif"
-            onclick="activarSonido()"
+            onclick="toggleSonido()"
             style="
               padding: 0.35rem 0.85rem;
               font-size: 0.8rem;
               background: var(--border);
+              color: var(--muted);
             "
           >
-            🔔 Activar sonido
+            🔕 Sonido inactivo
           </button>
           <button
             class="secondary"
@@ -555,7 +486,6 @@
       </header>
 
       <div class="main-layout">
-        <!-- Sidebar -->
         <div class="sidebar">
           <div class="sidebar-header">
             <span>Conversaciones</span>
@@ -566,14 +496,12 @@
           </div>
         </div>
 
-        <!-- Chat -->
         <div class="chat-area" id="chat-area">
           <div class="chat-empty">
             Seleccioná una conversación para ver los mensajes
           </div>
         </div>
 
-        <!-- Panel derecho -->
         <div class="right-panel">
           <div class="tabs">
             <div class="tab active" onclick="switchTab('metricas', this)">
@@ -585,7 +513,6 @@
             <div class="tab" onclick="switchTab('config', this)">Config</div>
           </div>
 
-          <!-- Métricas -->
           <div class="tab-content active" id="tab-metricas">
             <div class="metric-grid">
               <div class="metric-card">
@@ -609,7 +536,6 @@
             <div id="ultimas-consultas"><div class="empty">Sin datos</div></div>
           </div>
 
-          <!-- Catálogo -->
           <div class="tab-content" id="tab-catalogo">
             <button
               onclick="mostrarFormProducto()"
@@ -617,12 +543,11 @@
             >
               + Agregar producto
             </button>
-
             <div class="form-box" id="form-producto" style="display: none">
               <input type="hidden" id="prod-id" />
               <div class="form-group">
-                <label>Nombre del producto</label>
-                <input
+                <label>Nombre del producto</label
+                ><input
                   type="text"
                   id="prod-nombre"
                   placeholder="Ej: Látex blanco 4L"
@@ -630,17 +555,17 @@
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label>Precio ($)</label>
-                  <input type="number" id="prod-precio" placeholder="0" />
+                  <label>Precio ($)</label
+                  ><input type="number" id="prod-precio" placeholder="0" />
                 </div>
                 <div class="form-group">
-                  <label>Stock</label>
-                  <input type="number" id="prod-stock" placeholder="0" />
+                  <label>Stock</label
+                  ><input type="number" id="prod-stock" placeholder="0" />
                 </div>
               </div>
               <div class="form-group">
-                <label>Categoría</label>
-                <input
+                <label>Categoría</label
+                ><input
                   type="text"
                   id="prod-categoria"
                   placeholder="Ej: Látex interior"
@@ -655,39 +580,37 @@
                 </button>
               </div>
             </div>
-
             <div id="catalogo-list"><div class="empty">Sin productos</div></div>
           </div>
 
-          <!-- Config -->
           <div class="tab-content" id="tab-config">
             <div class="form-group">
-              <label>Horario de atención</label>
-              <input
+              <label>Horario de atención</label
+              ><input
                 type="text"
                 id="cfg-horario"
                 placeholder="Lunes a Viernes 8-18hs"
               />
             </div>
             <div class="form-group">
-              <label>Mensaje de bienvenida</label>
-              <input
+              <label>Mensaje de bienvenida</label
+              ><input
                 type="text"
                 id="cfg-bienvenida"
-                placeholder="¡Hola! ¿En qué te ayudo?"
+                placeholder="¡Hola! ¿Cuál es su consulta?"
               />
             </div>
             <div class="form-group">
-              <label>Mensaje fuera de horario</label>
-              <input
+              <label>Mensaje fuera de horario</label
+              ><input
                 type="text"
                 id="cfg-fuera-horario"
                 placeholder="Estamos cerrados..."
               />
             </div>
             <div class="form-group">
-              <label>Teléfono para derivar consultas</label>
-              <input
+              <label>Teléfono para derivar consultas</label
+              ><input
                 type="text"
                 id="cfg-telefono"
                 placeholder="011-XXXX-XXXX"
@@ -702,17 +625,51 @@
     </div>
 
     <script>
-      // Credenciales hardcodeadas del proyecto (anon key es pública, no es secreto)
       const SUPABASE_URL = "https://iujmvqaphikdissinlbu.supabase.co";
       const SUPABASE_ANON_KEY =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1am12cWFwaGlrZGlzc2lubGJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0ODAyNjIsImV4cCI6MjA5ODA1NjI2Mn0.51LyU-fEnxcXVTbKFdf0wE9IGTZKyPwsrVz35pebbOg";
-
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
       let negocioActual = null;
       let conversacionActual = null;
+      let sonidoActivado = false;
+      let ultimaCantMensajes = 0;
 
-      // ── Auth ───────────────────────────────────────────────────────────────────
+      // ── Sonido ────────────────────────────────────────────────────────────────
+      function toggleSonido() {
+        const audio = document.getElementById("notif-sound");
+        const btn = document.getElementById("btn-notif");
+
+        if (!sonidoActivado) {
+          audio
+            .play()
+            .then(() => {
+              audio.pause();
+              audio.currentTime = 0;
+              sonidoActivado = true;
+              btn.textContent = "🔔 Sonido activo";
+              btn.style.background = "rgba(34,197,94,0.2)";
+              btn.style.color = "var(--green)";
+            })
+            .catch(() => {
+              alert("No se pudo activar el sonido. Intentá de nuevo.");
+            });
+        } else {
+          sonidoActivado = false;
+          btn.textContent = "🔕 Sonido inactivo";
+          btn.style.background = "var(--border)";
+          btn.style.color = "var(--muted)";
+        }
+      }
+
+      function reproducirNotificacion() {
+        if (!sonidoActivado) return;
+        const audio = document.getElementById("notif-sound");
+        audio.currentTime = 0;
+        audio.play().catch((e) => console.log("Error reproduciendo:", e));
+      }
+
+      // ── Auth ──────────────────────────────────────────────────────────────────
       async function iniciarSesion() {
         const email = document.getElementById("login-email").value.trim();
         const pass = document.getElementById("login-pass").value;
@@ -775,13 +732,6 @@
         location.reload();
       }
 
-      // Auto-login si hay sesión activa
-      setInterval(() => {
-        if (negocioActual) {
-          cargarConversaciones();
-          cargarMetricas();
-        }
-      }, 10000);
       window.addEventListener("load", async () => {
         const { data } = await sb.auth.getSession();
         if (data?.session?.user) {
@@ -791,28 +741,14 @@
         }
       });
 
-      // ── Conversaciones ─────────────────────────────────────────────────────────
-      let sonidoActivado = false;
+      setInterval(() => {
+        if (negocioActual) {
+          cargarConversaciones();
+          cargarMetricas();
+        }
+      }, 10000);
 
-      function activarSonido() {
-        const audio = document.getElementById("notif-sound");
-        audio
-          .play()
-          .then(() => {
-            audio.pause();
-            audio.currentTime = 0;
-            sonidoActivado = true;
-            document.getElementById("btn-notif").textContent =
-              "🔔 Sonido activo";
-            document.getElementById("btn-notif").style.background =
-              "rgba(34,197,94,0.2)";
-            document.getElementById("btn-notif").style.color = "var(--green)";
-            document.getElementById("btn-notif").onclick = null;
-          })
-          .catch((e) => console.log("Error:", e));
-      }
-      let ultimaCantMensajes = 0;
-
+      // ── Conversaciones ────────────────────────────────────────────────────────
       async function cargarConversaciones() {
         const { data } = await sb
           .from("conversaciones")
@@ -828,8 +764,18 @@
         if (!data || data.length === 0) {
           list.innerHTML =
             '<div class="empty">Sin conversaciones todavía</div>';
+          ultimaCantMensajes = 0;
           return;
         }
+
+        const totalMensajes = data.reduce(
+          (acc, c) => acc + (c.mensajes?.length || 0),
+          0,
+        );
+        if (ultimaCantMensajes > 0 && totalMensajes > ultimaCantMensajes) {
+          reproducirNotificacion();
+        }
+        ultimaCantMensajes = totalMensajes;
 
         list.innerHTML = data
           .map((c) => {
@@ -839,10 +785,10 @@
             const ultimo = msgs?.[0];
             const tel = c.telefono_cliente.replace("whatsapp:", "");
             return `<div class="conv-item" onclick="abrirConversacion('${c.id}', '${tel}', '${c.updated_at}')" id="conv-${c.id}">
-        <span class="time">${formatTiempo(c.updated_at)}</span>
-        <div class="phone">${tel}</div>
-        <div class="last-msg">${ultimo?.contenido || "Sin mensajes"}</div>
-      </div>`;
+            <span class="time">${formatTiempo(c.updated_at)}</span>
+            <div class="phone">${tel}</div>
+            <div class="last-msg">${ultimo?.contenido || "Sin mensajes"}</div>
+          </div>`;
           })
           .join("");
       }
@@ -862,17 +808,16 @@
 
         const area = document.getElementById("chat-area");
         area.innerHTML = `
-      <div class="chat-header">
-        <div>
-          <div class="phone">${telefono}</div>
-          <div class="since">Desde ${new Date(desde).toLocaleDateString("es-AR")}</div>
-        </div>
-      </div>
-      <div class="messages" id="messages"></div>
-    `;
+          <div class="chat-header">
+            <div>
+              <div class="phone">${telefono}</div>
+              <div class="since">Desde ${new Date(desde).toLocaleDateString("es-AR")}</div>
+            </div>
+          </div>
+          <div class="messages" id="messages"></div>
+        `;
 
         const container = document.getElementById("messages");
-
         if (!data || data.length === 0) {
           container.innerHTML = '<div class="empty">Sin mensajes</div>';
           return;
@@ -881,29 +826,18 @@
         container.innerHTML = data
           .map(
             (m) => `
-      <div class="msg-group">
-        <div class="msg ${m.rol}">${m.contenido}</div>
-        <div class="msg-time">${formatTiempo(m.created_at)}</div>
-      </div>
-    `,
+          <div class="msg-group">
+            <div class="msg ${m.rol}">${m.contenido}</div>
+            <div class="msg-time">${formatTiempo(m.created_at)}</div>
+          </div>
+        `,
           )
           .join("");
 
         container.scrollTop = container.scrollHeight;
-        // Contar total de mensajes para detectar nuevos
-        const totalMensajes =
-          data?.reduce((acc, c) => acc + (c.mensajes?.length || 0), 0) || 0;
-        if (
-          ultimaCantMensajes > 0 &&
-          totalMensajes > ultimaCantMensajes &&
-          sonidoActivado
-        ) {
-          document.getElementById("notif-sound")?.play();
-        }
-        ultimaCantMensajes = totalMensajes;
       }
 
-      // ── Métricas ───────────────────────────────────────────────────────────────
+      // ── Métricas ──────────────────────────────────────────────────────────────
       async function cargarMetricas() {
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
@@ -923,10 +857,9 @@
         const ids = convIds?.map((c) => c.id) || [];
 
         if (ids.length === 0) {
-          document.getElementById("m-hoy").textContent = 0;
-          document.getElementById("m-conv").textContent = 0;
-          document.getElementById("m-semana").textContent = 0;
-          document.getElementById("m-total").textContent = 0;
+          ["m-hoy", "m-conv", "m-semana", "m-total"].forEach(
+            (id) => (document.getElementById(id).textContent = 0),
+          );
           return;
         }
 
@@ -936,14 +869,12 @@
           .in("conversacion_id", ids)
           .eq("rol", "cliente")
           .gte("created_at", hoy.toISOString());
-
         const { count: msgsSemana } = await sb
           .from("mensajes")
           .select("*", { count: "exact", head: true })
           .in("conversacion_id", ids)
           .eq("rol", "cliente")
           .gte("created_at", semana.toISOString());
-
         const { count: msgsTotal } = await sb
           .from("mensajes")
           .select("*", { count: "exact", head: true })
@@ -955,7 +886,6 @@
         document.getElementById("m-semana").textContent = msgsSemana || 0;
         document.getElementById("m-total").textContent = msgsTotal || 0;
 
-        // Últimas consultas
         const { data: ultimas } = await sb
           .from("mensajes")
           .select("contenido, created_at")
@@ -973,16 +903,16 @@
         container.innerHTML = ultimas
           .map(
             (m) => `
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:0.6rem 0.75rem;margin-bottom:0.4rem;">
-        <div style="font-size:0.82rem;margin-bottom:3px;">${m.contenido}</div>
-        <div style="font-size:0.68rem;color:var(--muted);">${formatTiempo(m.created_at)}</div>
-      </div>
-    `,
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:0.6rem 0.75rem;margin-bottom:0.4rem;">
+            <div style="font-size:0.82rem;margin-bottom:3px;">${m.contenido}</div>
+            <div style="font-size:0.68rem;color:var(--muted);">${formatTiempo(m.created_at)}</div>
+          </div>
+        `,
           )
           .join("");
       }
 
-      // ── Catálogo ───────────────────────────────────────────────────────────────
+      // ── Catálogo ──────────────────────────────────────────────────────────────
       async function cargarCatalogo() {
         const { data } = await sb
           .from("productos")
@@ -990,42 +920,39 @@
           .eq("negocio_id", negocioActual)
           .eq("activo", true)
           .order("categoria");
-
         const container = document.getElementById("catalogo-list");
         if (!data || data.length === 0) {
           container.innerHTML =
             '<div class="empty">Sin productos cargados</div>';
           return;
         }
-
         container.innerHTML = data
           .map(
             (p) => `
-      <div class="producto-item">
-        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:4px;">
-          <div class="nombre">${p.nombre}</div>
-          <button onclick='editarProducto(${JSON.stringify(p).replace(/'/g, "&#39;")})'
-            style="padding:2px 8px;font-size:0.7rem;background:var(--border);">✏️</button>
-        </div>
-        <div class="detalle">
-          <span>$${Number(p.precio).toLocaleString("es-AR")}</span>
-          <span class="badge ${p.stock > 3 ? "green" : p.stock > 0 ? "amber" : "red"}">
-            ${p.stock > 0 ? p.stock + " u." : "Sin stock"}
-          </span>
-          <span>${p.categoria || "—"}</span>
-        </div>
-      </div>
-    `,
+          <div class="producto-item">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:4px;">
+              <div class="nombre">${p.nombre}</div>
+              <button onclick='editarProducto(${JSON.stringify(p).replace(/'/g, "&#39;")})' style="padding:2px 8px;font-size:0.7rem;background:var(--border);">✏️</button>
+            </div>
+            <div class="detalle">
+              <span>$${Number(p.precio).toLocaleString("es-AR")}</span>
+              <span class="badge ${p.stock > 3 ? "green" : p.stock > 0 ? "amber" : "red"}">${p.stock > 0 ? p.stock + " u." : "Sin stock"}</span>
+              <span>${p.categoria || "—"}</span>
+            </div>
+          </div>
+        `,
           )
           .join("");
       }
 
       function mostrarFormProducto() {
-        document.getElementById("prod-id").value = "";
-        document.getElementById("prod-nombre").value = "";
-        document.getElementById("prod-precio").value = "";
-        document.getElementById("prod-stock").value = "";
-        document.getElementById("prod-categoria").value = "";
+        [
+          "prod-id",
+          "prod-nombre",
+          "prod-precio",
+          "prod-stock",
+          "prod-categoria",
+        ].forEach((id) => (document.getElementById(id).value = ""));
         document.getElementById("form-producto").style.display = "block";
       }
 
@@ -1052,25 +979,22 @@
           negocio_id: negocioActual,
           activo: true,
         };
-
         if (id) {
           await sb.from("productos").update(payload).eq("id", id);
         } else {
           await sb.from("productos").insert([payload]);
         }
-
         cancelarFormProducto();
         cargarCatalogo();
       }
 
-      // ── Config ─────────────────────────────────────────────────────────────────
+      // ── Config ────────────────────────────────────────────────────────────────
       async function cargarConfig() {
         const { data } = await sb
           .from("configuracion")
           .select("*")
           .eq("negocio_id", negocioActual)
           .single();
-
         if (!data) return;
         document.getElementById("cfg-horario").value = data.horario || "";
         document.getElementById("cfg-bienvenida").value =
@@ -1096,7 +1020,7 @@
         alert("✅ Configuración guardada");
       }
 
-      // ── Tabs ───────────────────────────────────────────────────────────────────
+      // ── Tabs ──────────────────────────────────────────────────────────────────
       function switchTab(nombre, el) {
         document
           .querySelectorAll(".tab")
@@ -1108,7 +1032,7 @@
         document.getElementById(`tab-${nombre}`).classList.add("active");
       }
 
-      // ── Helpers ────────────────────────────────────────────────────────────────
+      // ── Helpers ───────────────────────────────────────────────────────────────
       function formatTiempo(iso) {
         const d = new Date(iso);
         const diff = Date.now() - d;
