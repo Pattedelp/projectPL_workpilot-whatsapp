@@ -26,6 +26,10 @@ app.get("/", async (req, res) => {
     .select("nombre, activo");
   res.json({ status: "ok", negocios: negocios?.length || 0 });
 });
+const path = require("path");
+
+// Servir el panel web
+app.use("/panel", express.static(path.join(__dirname, "panel")));
 
 // ── Recibir mensajes de WhatsApp via Twilio ───────────────────────────────────
 app.post("/webhook", async (req, res) => {
