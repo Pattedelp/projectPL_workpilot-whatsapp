@@ -132,14 +132,12 @@ async function obtenerCatalogo(negocioId) {
 }
 
 async function obtenerOCrearConversacion(negocioId, telefonoCliente) {
-  const { data: nueva, error: errorNueva } = await supabase
+  const { data: existente } = await supabase
     .from("conversaciones")
-    .insert([{ negocio_id: negocioId, telefono_cliente: telefonoCliente }])
-    .select()
-    .single();
-  if (errorNueva)
-    console.error("Error creando conversación:", errorNueva.message);
-  return nueva;
+    .select("*")
+    .eq("negocio_id", negocioId)
+    .eq("telefono_cliente", telefonoCliente)
+    .maybeSingle();
 
   if (existente) {
     await supabase
@@ -149,12 +147,15 @@ async function obtenerOCrearConversacion(negocioId, telefonoCliente) {
     return existente;
   }
 
-  const { data: nueva } = await supabase
+  const { data: creada, error: errorCreada } = await supabase
     .from("conversaciones")
     .insert([{ negocio_id: negocioId, telefono_cliente: telefonoCliente }])
     .select()
-    .maybeSingle();
-  return nueva;
+    .single();
+
+  if (errorCreada)
+    console.error("Error creando conversación:", errorCreada.message);
+  return creada;
 }
 
 async function guardarMensaje(conversacionId, rol, contenido) {
