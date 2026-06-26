@@ -82,6 +82,7 @@ app.post("/webhook", async (req, res) => {
       catalogo,
       config,
       historial,
+      conversacion,
     );
 
     // Guardar respuesta del agente
@@ -191,17 +192,64 @@ function estaEnHorario() {
 }
 
 // ── Procesar mensaje ──────────────────────────────────────────────────────────
-async function procesarMensaje(mensaje, negocio, catalogo, config, historial) {
-  // Detectar si quiere hablar con humano
+async function procesarMensaje(
+  mensaje,
+  negocio,
+  catalogo,
+  config,
+  historial,
+  conversacion,
+) {
   const m = mensaje.toLowerCase();
+
+  // Detectar si quiere hablar con humano
   if (
     m.includes("hablar con alguien") ||
     m.includes("persona") ||
     m.includes("humano") ||
     m.includes("encargado")
   ) {
-    return `Te comunico con nuestro equipo. Podés llamarnos al ${config?.derivar_telefono || catalogo.sucursales[0]?.telefono || "nuestro local"} 📞`;
+    const sucursal = conversacion.sucursal_id
+      ? catalogo.sucursales.find((s) => s.id === conversacion.sucursal_id)
+      : catalogo.sucursales[0];
+    return `Te comunico con el equipo de ${sucursal?.nombre || "nuestro local"}. Podés llamarnos al ${sucursal?.telefono || config?.derivar_telefono} 📞`;
   }
+
+  // Si no tiene zona asignada y no es el primer saludo, preguntar zona
+  if (!conversacion.zona && historial.length >= 2) {
+    const yaPreguntoZona = historial.some(
+      (h) =>
+        h.contenido.toLowerCase().includes("zona") ||
+        h.contenido.toLowerCase().includes("sucursal"),
+    );
+    if (!yaPreguntoZona) {
+      return `Para darte la mejor atención, ¿podés indicarme en qué zona o barrio estás? Así te conecto con el local más cercano. 📍`;
+    }
+  }
+
+  // Detectar si el mensaje es una zona
+  if (!conversacion.zona && historial.length >= 2) {
+    const sucursalCercana = detectarSucursalPorZona(
+      mensaje,
+      catalogo.sucursales,
+    );
+    if (sucursalCercana) {
+      // Guardar zona y sucursal en la conversación
+      await supabase
+        .from("conversaciones")
+        .update({ zona: mensaje, sucursal_id: sucursalCercana.id })
+        .eq("id", conversacion.id);
+      conversacion.zona = mensaje;
+      conversacion.sucursal_id = sucursalCercana.id;
+
+      return `Perfecto, te asigno al local de *${sucursalCercana.nombre}* (${sucursalCercana.direccion}). ¿En qué te puedo ayudar? 😊`;
+    }
+  }
+
+  // Obtener sucursal del cliente (la asignada o la primera por defecto)
+  const sucursalCliente = conversacion.sucursal_id
+    ? catalogo.sucursales.find((s) => s.id === conversacion.sucursal_id)
+    : catalogo.sucursales[0];
 
   if (ANTHROPIC_API_KEY && ANTHROPIC_API_KEY !== "tu_key_aqui") {
     return await procesarConClaude(
@@ -210,15 +258,95 @@ async function procesarMensaje(mensaje, negocio, catalogo, config, historial) {
       catalogo,
       config,
       historial,
+      sucursalCliente,
     );
   }
-  return respuestaPredefinida(mensaje, negocio, catalogo, config);
+  return respuestaPredefinida(
+    mensaje,
+    negocio,
+    catalogo,
+    config,
+    sucursalCliente,
+  );
+}
+
+// ── Detectar sucursal por zona ────────────────────────────────────────────────
+function detectarSucursalPorZona(mensaje, sucursales) {
+  const m = mensaje.toLowerCase();
+
+  // Buscar coincidencia directa con nombre o dirección de sucursal
+  for (const s of sucursales) {
+    const nombreLower = s.nombre.toLowerCase();
+    const dirLower = (s.direccion || "").toLowerCase();
+    if (
+      m.includes(nombreLower) ||
+      nombreLower.includes(m) ||
+      dirLower.includes(m)
+    ) {
+      return s;
+    }
+  }
+
+  // Mapeo de zonas comunes de Buenos Aires
+  const zonas = {
+    norte: [
+      "norte",
+      "cabildo",
+      "palermo",
+      "belgrano",
+      "nuñez",
+      "saavedra",
+      "coghlan",
+      "villa urquiza",
+    ],
+    sur: ["sur", "boca", "barracas", "pompeya", "lugano", "mataderos"],
+    oeste: ["oeste", "flores", "floresta", "liniers", "caballito", "almagro"],
+    centro: [
+      "centro",
+      "microcentro",
+      "monserrat",
+      "san telmo",
+      "constitucion",
+      "corrientes",
+    ],
+  };
+
+  for (const [zona, keywords] of Object.entries(zonas)) {
+    if (keywords.some((k) => m.includes(k))) {
+      // Buscar sucursal que tenga esa zona en su nombre o dirección
+      const match = sucursales.find(
+        (s) =>
+          s.nombre.toLowerCase().includes(zona) ||
+          (s.direccion || "").toLowerCase().includes(zona) ||
+          keywords.some((k) => (s.direccion || "").toLowerCase().includes(k)),
+      );
+      if (match) return match;
+      // Si no hay match específico, devolver la primera sucursal
+      return sucursales[0];
+    }
+  }
+
+  // Si el mensaje parece una zona (texto corto, no una pregunta)
+  if (mensaje.split(" ").length <= 4 && !mensaje.includes("?")) {
+    return sucursales[0];
+  }
+
+  return null;
 }
 
 // ── Respuestas predefinidas ───────────────────────────────────────────────────
-function respuestaPredefinida(mensaje, negocio, catalogo, config) {
+function respuestaPredefinida(
+  mensaje,
+  negocio,
+  catalogo,
+  config,
+  sucursalCliente,
+) {
   const m = mensaje.toLowerCase();
-  const tel = catalogo.sucursales[0]?.telefono || "";
+  const tel =
+    sucursalCliente?.telefono || catalogo.sucursales[0]?.telefono || "";
+  const localNombre =
+    sucursalCliente?.nombre || catalogo.sucursales[0]?.nombre || negocio.nombre;
 
   if (m.includes("hola") || m.includes("buenas") || m.includes("buen")) {
     return (
@@ -238,7 +366,7 @@ function respuestaPredefinida(mensaje, negocio, catalogo, config) {
       .slice(0, 5)
       .map((p) => `• ${p.nombre}: $${Number(p.precio).toLocaleString("es-AR")}`)
       .join("\n");
-    return `🎨 Algunos precios:\n\n${lista}\n\nPara más info: 📞 ${tel}`;
+    return `🎨 Algunos precios en ${localNombre}:\n\n${lista}\n\nPara más info: 📞 ${tel}`;
   }
 
   if (
@@ -248,16 +376,11 @@ function respuestaPredefinida(mensaje, negocio, catalogo, config) {
     m.includes("disponib")
   ) {
     const disponibles = catalogo.productos.filter((p) => p.stock > 0).length;
-    return `📦 Tenemos ${disponibles} productos disponibles.\n\nConsultá por uno específico o llamanos:\n📞 ${tel}`;
+    return `📦 En ${localNombre} tenemos ${disponibles} productos disponibles.\n\nConsultá por uno específico o llamanos:\n📞 ${tel}`;
   }
 
-  if (
-    m.includes("horario") ||
-    m.includes("abren") ||
-    m.includes("cierran") ||
-    m.includes("hora")
-  ) {
-    return `🕐 Horario:\n${config?.horario || "Lunes a Viernes 8-18hs, Sábados 8-13hs"}\n\n📍 ${catalogo.sucursales.map((s) => `${s.nombre}: ${s.direccion}`).join("\n📍 ")}`;
+  if (m.includes("horario") || m.includes("abren") || m.includes("cierran")) {
+    return `🕐 Horario de ${localNombre}:\n${config?.horario || "Lunes a Viernes 8-18hs, Sábados 8-13hs"}\n\n📍 ${sucursalCliente?.direccion || ""}`;
   }
 
   if (
@@ -266,26 +389,26 @@ function respuestaPredefinida(mensaje, negocio, catalogo, config) {
     m.includes("dónde") ||
     m.includes("donde")
   ) {
-    return `📍 Nuestras sucursales:\n\n${catalogo.sucursales.map((s) => `• ${s.nombre}\n  ${s.direccion}\n  Tel: ${s.telefono}`).join("\n\n")}`;
+    return `📍 ${localNombre}\n${sucursalCliente?.direccion || ""}\n📞 ${tel}\n\n🕐 ${config?.horario || "Lunes a Viernes 8-18hs"}`;
   }
 
-  // Buscar producto específico en el catálogo
-  const productoEncontrado = catalogo.productos.find(
-    (p) =>
-      p.nombre.toLowerCase().includes(m) ||
-      m.includes(p.nombre.toLowerCase().split(" ")[0]),
+  // Buscar producto específico
+  const productoEncontrado = catalogo.productos.find((p) =>
+    p.nombre
+      .toLowerCase()
+      .split(" ")
+      .some((palabra) => palabra.length > 3 && m.includes(palabra)),
   );
   if (productoEncontrado) {
-    return `🎨 ${productoEncontrado.nombre}\n💰 Precio: $${Number(productoEncontrado.precio).toLocaleString("es-AR")}\n📦 Stock: ${productoEncontrado.stock > 0 ? "✅ Disponible" : "⚠️ Sin stock"}\n\nPara hacer un pedido: 📞 ${tel}`;
+    return `🎨 ${productoEncontrado.nombre}\n💰 $${Number(productoEncontrado.precio).toLocaleString("es-AR")}\n📦 ${productoEncontrado.stock > 0 ? "✅ Disponible en " + localNombre : "⚠️ Sin stock actualmente"}\n\n📞 ${tel}`;
   }
 
   if (m.includes("gracias") || m.includes("ok") || m.includes("perfecto")) {
-    return `¡De nada! 😊 Estamos para ayudarte. ${negocio.nombre} 🎨`;
+    return `¡De nada! 😊 Cualquier consulta estamos en ${localNombre}. ${negocio.nombre} 🎨`;
   }
 
-  return `Gracias por contactar a ${negocio.nombre}. 🎨\n\nPodés preguntarme sobre precios, stock y horarios, o llamarnos:\n📞 ${tel}\n\n🕐 ${config?.horario || "Lunes a Viernes 8-18hs"}`;
+  return `Gracias por contactar a ${negocio.nombre}. 🎨\n\n📍 Tu local: ${localNombre}\n📞 ${tel}\n🕐 ${config?.horario || "Lunes a Viernes 8-18hs"}`;
 }
-
 // ── Procesar con Claude ───────────────────────────────────────────────────────
 async function procesarConClaude(
   mensaje,
@@ -293,17 +416,22 @@ async function procesarConClaude(
   catalogo,
   config,
   historial,
+  sucursalCliente,
 ) {
   const systemPrompt = `Sos un asistente comercial de ${negocio.nombre}, una pinturería argentina.
 Respondé en español de Argentina, de forma amigable y concisa (máximo 4 líneas).
 
-Horario: ${config?.horario || "Lunes a Viernes 8-18hs, Sábados 8-13hs"}
-Sucursales: ${catalogo.sucursales.map((s) => `${s.nombre} - ${s.direccion} - Tel: ${s.telefono}`).join(" | ")}
+El cliente está asignado al local: ${sucursalCliente?.nombre || "Casa Central"}
+Dirección: ${sucursalCliente?.direccion || ""}
+Teléfono del local: ${sucursalCliente?.telefono || ""}
 
-Catálogo:
+Horario: ${config?.horario || "Lunes a Viernes 8-18hs, Sábados 8-13hs"}
+
+Catálogo disponible:
 ${catalogo.productos.map((p) => `- ${p.nombre}: $${Number(p.precio).toLocaleString("es-AR")} (${p.stock > 0 ? "disponible" : "sin stock"})`).join("\n")}
 
-No inventes información. Si no sabés algo, dales el teléfono del local.`;
+Siempre que derives a un humano, usá el teléfono del local asignado al cliente.
+No inventes información.`;
 
   // Construir historial para Claude
   const mensajesAPI = historial.map((m) => ({
