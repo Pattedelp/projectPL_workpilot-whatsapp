@@ -6,6 +6,8 @@ const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 app.use(express.json());
+const path = require("path");
+app.use("/panel", express.static(path.join(__dirname, "panel")));
 app.use(express.urlencoded({ extended: false }));
 
 const PORT = process.env.PORT || 10000;
