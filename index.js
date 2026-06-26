@@ -57,43 +57,42 @@ app.post("/webhook", async (req, res) => {
 
 // ── Procesar con Claude ───────────────────────────────────────────────────────
 async function procesarConClaude(mensaje) {
-  const systemPrompt = `Sos un asistente comercial de ${catalogo.negocio}, una cadena de pinturerías argentina.
-Tu trabajo es responder consultas de clientes por WhatsApp de forma amigable, concisa y útil.
-Respondé siempre en español de Argentina.
+  // MODO DEMO — reemplazar con Claude cuando haya API key
+  const mensajeLower = mensaje.toLowerCase();
 
-Información del negocio:
-- Horario: ${catalogo.horario}
-- Sucursales: ${catalogo.sucursales.map((s) => `${s.nombre} (${s.direccion}, tel: ${s.telefono})`).join(" | ")}
+  if (
+    mensajeLower.includes("precio") ||
+    mensajeLower.includes("cuánto") ||
+    mensajeLower.includes("cuanto")
+  ) {
+    return `¡Hola! Te paso algunos precios de nuestra pinturería:\n\n🎨 Látex interior blanco 4L: $8.500\n🎨 Látex exterior blanco 4L: $9.800\n🎨 Esmalte sintético 1L: $4.200\n\nPara más info podés llamarnos al 011-4444-5555 📞`;
+  }
 
-Catálogo de productos disponibles:
-${catalogo.productos.map((p) => `- ${p.nombre}: $${p.precio.toLocaleString("es-AR")} (stock: ${p.stock} unidades)`).join("\n")}
+  if (
+    mensajeLower.includes("stock") ||
+    mensajeLower.includes("tienen") ||
+    mensajeLower.includes("hay")
+  ) {
+    return `¡Hola! Sí, contamos con stock disponible en nuestros locales. Te recomiendo llamarnos para confirmar disponibilidad específica:\n\n📍 Casa Central: 011-4444-5555\n📍 Sucursal Norte: 011-4444-6666\n\nHorario: Lunes a Viernes 8-18hs, Sábados 8-13hs 🕐`;
+  }
 
-Reglas:
-- Si te preguntan por un producto que no está en el catálogo, deciles que consultarás con el equipo y que se comuniquen al local más cercano
-- Si preguntan precios, dálos claramente
-- Si preguntan stock, informá si hay disponibilidad (sin dar el número exacto, solo "disponible" o "stock limitado" o "sin stock")
-- Si quieren hacer un pedido o necesitan más info, dales el teléfono del local más cercano
-- Respondé siempre de forma breve, máximo 3-4 líneas
-- No inventes información que no tenés`;
+  if (
+    mensajeLower.includes("horario") ||
+    mensajeLower.includes("abren") ||
+    mensajeLower.includes("cierran")
+  ) {
+    return `Nuestro horario es:\n\n🕐 Lunes a Viernes: 8 a 18hs\n🕐 Sábados: 8 a 13hs\n\nEstamos en:\n📍 Casa Central: Av. Corrientes 1234\n📍 Sucursal Norte: Av. Cabildo 567`;
+  }
 
-  const response = await axios.post(
-    "https://api.anthropic.com/v1/messages",
-    {
-      model: "claude-sonnet-4-6",
-      max_tokens: 300,
-      system: systemPrompt,
-      messages: [{ role: "user", content: mensaje }],
-    },
-    {
-      headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-    },
-  );
+  if (
+    mensajeLower.includes("hola") ||
+    mensajeLower.includes("buenas") ||
+    mensajeLower.includes("buen")
+  ) {
+    return `¡Hola! 👋 Bienvenido a Pinturería Sagitario. ¿En qué te puedo ayudar?\n\nPodés consultarme sobre:\n• Precios de productos\n• Disponibilidad de stock\n• Horarios y ubicaciones\n• Información general`;
+  }
 
-  return response.data.content[0].text;
+  return `¡Hola! Gracias por contactarnos. Para ayudarte mejor, podés llamarnos al 011-4444-5555 o visitarnos en:\n\n📍 Casa Central: Av. Corrientes 1234\n📍 Sucursal Norte: Av. Cabildo 567\n\nHorario: Lunes a Viernes 8-18hs 🕐`;
 }
 
 // ── Enviar mensaje por WhatsApp ───────────────────────────────────────────────
