@@ -1,8 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
-const fs = require("fs");
 const twilio = require("twilio");
+const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 app.use(express.json());
@@ -13,63 +13,213 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
 const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-
-// Cargar catálogo
-const catalogo = JSON.parse(fs.readFileSync("./catalogo.json", "utf8"));
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ── Health check ──────────────────────────────────────────────────────────────
-app.get("/", (req, res) => {
-  res.json({ status: "ok", negocio: catalogo.negocio });
+app.get("/", async (req, res) => {
+  const { data: negocios } = await supabase
+    .from("negocios")
+    .select("nombre, activo");
+  res.json({ status: "ok", negocios: negocios?.length || 0 });
 });
 
 // ── Recibir mensajes de WhatsApp via Twilio ───────────────────────────────────
 app.post("/webhook", async (req, res) => {
-  try {
-    const from = req.body.From; // número del cliente ej: whatsapp:+5491168936347
-    const texto = req.body.Body; // texto del mensaje
+  res.sendStatus(200);
 
-    if (!from || !texto) {
-      return res.sendStatus(200);
+  try {
+    const from = req.body.From; // ej: whatsapp:+5491168936347
+    const to = req.body.To; // ej: whatsapp:+14155238886 (número del negocio)
+    const texto = req.body.Body;
+
+    if (!from || !texto) return;
+
+    console.log(`📩 [${to}] Mensaje de ${from}: ${texto}`);
+
+    // Identificar el negocio por el número de WhatsApp
+    const negocio = await obtenerNegocio(to);
+    if (!negocio) {
+      console.log(`⚠️ No se encontró negocio para el número ${to}`);
+      return;
     }
 
-    console.log(`📩 Mensaje de ${from}: ${texto}`);
+    // Verificar horario de atención
+    const config = await obtenerConfiguracion(negocio.id);
+    if (!estaEnHorario()) {
+      await enviarMensaje(
+        from,
+        config?.mensaje_fuera_horario ||
+          "Estamos cerrados. Te respondemos pronto.",
+      );
+      return;
+    }
+
+    // Obtener o crear conversación
+    const conversacion = await obtenerOCrearConversacion(negocio.id, from);
+
+    // Guardar mensaje del cliente
+    await guardarMensaje(conversacion.id, "cliente", texto);
+
+    // Obtener historial reciente
+    const historial = await obtenerHistorial(conversacion.id);
+
+    // Cargar catálogo del negocio
+    const catalogo = await obtenerCatalogo(negocio.id);
 
     // Procesar con Claude o respuestas predefinidas
-    const respuesta = await procesarMensaje(texto);
+    const respuesta = await procesarMensaje(
+      texto,
+      negocio,
+      catalogo,
+      config,
+      historial,
+    );
 
-    // Enviar respuesta por Twilio
-    await twilioClient.messages.create({
-      from: TWILIO_WHATSAPP_NUMBER,
-      to: from,
-      body: respuesta,
-    });
+    // Guardar respuesta del agente
+    await guardarMensaje(conversacion.id, "agente", respuesta);
+
+    // Enviar respuesta
+    await enviarMensaje(from, respuesta);
 
     console.log(`✅ Respuesta enviada a ${from}`);
-    res.sendStatus(200);
   } catch (err) {
     console.error("Error procesando mensaje:", err.message);
-    res.sendStatus(500);
   }
 });
 
-// ── Procesar mensaje ──────────────────────────────────────────────────────────
-async function procesarMensaje(mensaje) {
-  // Si hay API key de Claude, usarla
-  if (ANTHROPIC_API_KEY && ANTHROPIC_API_KEY !== "tu_key_aqui") {
-    return await procesarConClaude(mensaje);
-  }
-  // Si no, usar respuestas predefinidas
-  return respuestaPredefinida(mensaje);
+// ── Funciones de base de datos ────────────────────────────────────────────────
+
+async function obtenerNegocio(whatsappNumber) {
+  const { data } = await supabase
+    .from("negocios")
+    .select("*")
+    .eq("whatsapp_number", whatsappNumber)
+    .eq("activo", true)
+    .single();
+  return data;
 }
 
-// ── Respuestas predefinidas (modo demo sin API key) ───────────────────────────
-function respuestaPredefinida(mensaje) {
+async function obtenerConfiguracion(negocioId) {
+  const { data } = await supabase
+    .from("configuracion")
+    .select("*")
+    .eq("negocio_id", negocioId)
+    .single();
+  return data;
+}
+
+async function obtenerCatalogo(negocioId) {
+  const { data: productos } = await supabase
+    .from("productos")
+    .select("*")
+    .eq("negocio_id", negocioId)
+    .eq("activo", true)
+    .order("categoria");
+
+  const { data: sucursales } = await supabase
+    .from("sucursales")
+    .select("*")
+    .eq("negocio_id", negocioId);
+
+  return { productos: productos || [], sucursales: sucursales || [] };
+}
+
+async function obtenerOCrearConversacion(negocioId, telefonoCliente) {
+  // Buscar conversación existente
+  const { data: existente } = await supabase
+    .from("conversaciones")
+    .select("*")
+    .eq("negocio_id", negocioId)
+    .eq("telefono_cliente", telefonoCliente)
+    .single();
+
+  if (existente) {
+    // Actualizar updated_at
+    await supabase
+      .from("conversaciones")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", existente.id);
+    return existente;
+  }
+
+  // Crear nueva conversación
+  const { data: nueva } = await supabase
+    .from("conversaciones")
+    .insert([{ negocio_id: negocioId, telefono_cliente: telefonoCliente }])
+    .select()
+    .single();
+  return nueva;
+}
+
+async function guardarMensaje(conversacionId, rol, contenido) {
+  await supabase
+    .from("mensajes")
+    .insert([{ conversacion_id: conversacionId, rol, contenido }]);
+}
+
+async function obtenerHistorial(conversacionId) {
+  const { data } = await supabase
+    .from("mensajes")
+    .select("rol, contenido")
+    .eq("conversacion_id", conversacionId)
+    .order("created_at", { ascending: true })
+    .limit(10); // últimos 10 mensajes para contexto
+
+  return data || [];
+}
+
+// ── Horario de atención ───────────────────────────────────────────────────────
+function estaEnHorario() {
+  const ahora = new Date();
+  // Convertir a hora Argentina (UTC-3)
+  const horaAR = new Date(ahora.getTime() - 3 * 60 * 60 * 1000);
+  const dia = horaAR.getDay(); // 0=domingo, 1=lunes...6=sábado
+  const hora = horaAR.getHours();
+
+  if (dia === 0) return false; // domingo cerrado
+  if (dia === 6) return hora >= 8 && hora < 13; // sábado 8-13
+  return hora >= 8 && hora < 18; // lunes a viernes 8-18
+}
+
+// ── Procesar mensaje ──────────────────────────────────────────────────────────
+async function procesarMensaje(mensaje, negocio, catalogo, config, historial) {
+  // Detectar si quiere hablar con humano
   const m = mensaje.toLowerCase();
+  if (
+    m.includes("hablar con alguien") ||
+    m.includes("persona") ||
+    m.includes("humano") ||
+    m.includes("encargado")
+  ) {
+    return `Te comunico con nuestro equipo. Podés llamarnos al ${config?.derivar_telefono || catalogo.sucursales[0]?.telefono || "nuestro local"} 📞`;
+  }
+
+  if (ANTHROPIC_API_KEY && ANTHROPIC_API_KEY !== "tu_key_aqui") {
+    return await procesarConClaude(
+      mensaje,
+      negocio,
+      catalogo,
+      config,
+      historial,
+    );
+  }
+  return respuestaPredefinida(mensaje, negocio, catalogo, config);
+}
+
+// ── Respuestas predefinidas ───────────────────────────────────────────────────
+function respuestaPredefinida(mensaje, negocio, catalogo, config) {
+  const m = mensaje.toLowerCase();
+  const tel = catalogo.sucursales[0]?.telefono || "";
 
   if (m.includes("hola") || m.includes("buenas") || m.includes("buen")) {
-    return `¡Hola! 👋 Bienvenido a ${catalogo.negocio}. ¿En qué te puedo ayudar?\n\nPodés consultarme sobre:\n• 🎨 Precios de productos\n• 📦 Disponibilidad de stock\n• 🕐 Horarios y ubicaciones`;
+    return (
+      config?.mensaje_bienvenida ||
+      `¡Hola! 👋 Bienvenido a ${negocio.nombre}. ¿En qué te puedo ayudar?\n\n• 🎨 Precios\n• 📦 Stock\n• 🕐 Horarios\n• 📍 Ubicaciones`
+    );
   }
 
   if (
@@ -79,11 +229,11 @@ function respuestaPredefinida(mensaje) {
     m.includes("vale") ||
     m.includes("cuesta")
   ) {
-    const productos = catalogo.productos.slice(0, 5);
-    const lista = productos
-      .map((p) => `• ${p.nombre}: $${p.precio.toLocaleString("es-AR")}`)
+    const lista = catalogo.productos
+      .slice(0, 5)
+      .map((p) => `• ${p.nombre}: $${Number(p.precio).toLocaleString("es-AR")}`)
       .join("\n");
-    return `¡Te paso algunos precios! 🎨\n\n${lista}\n\nPara ver el catálogo completo contactanos:\n📞 ${catalogo.sucursales[0].telefono}`;
+    return `🎨 Algunos precios:\n\n${lista}\n\nPara más info: 📞 ${tel}`;
   }
 
   if (
@@ -92,9 +242,8 @@ function respuestaPredefinida(mensaje) {
     m.includes("hay") ||
     m.includes("disponib")
   ) {
-    const conStock = catalogo.productos.filter((p) => p.stock > 0);
-    const sinStock = catalogo.productos.filter((p) => p.stock === 0);
-    return `📦 Estado del stock:\n\n✅ Con disponibilidad: ${conStock.length} productos\n⚠️ Stock limitado: ${catalogo.productos.filter((p) => p.stock <= 3 && p.stock > 0).length} productos\n\nConsultá por un producto específico o llamanos:\n📞 ${catalogo.sucursales[0].telefono}`;
+    const disponibles = catalogo.productos.filter((p) => p.stock > 0).length;
+    return `📦 Tenemos ${disponibles} productos disponibles.\n\nConsultá por uno específico o llamanos:\n📞 ${tel}`;
   }
 
   if (
@@ -103,81 +252,60 @@ function respuestaPredefinida(mensaje) {
     m.includes("cierran") ||
     m.includes("hora")
   ) {
-    return `🕐 Nuestro horario:\n\nLunes a Viernes: 8 a 18hs\nSábados: 8 a 13hs\n\n📍 Sucursales:\n${catalogo.sucursales.map((s) => `• ${s.nombre}: ${s.direccion}`).join("\n")}`;
+    return `🕐 Horario:\n${config?.horario || "Lunes a Viernes 8-18hs, Sábados 8-13hs"}\n\n📍 ${catalogo.sucursales.map((s) => `${s.nombre}: ${s.direccion}`).join("\n📍 ")}`;
   }
 
   if (
     m.includes("dirección") ||
     m.includes("direccion") ||
     m.includes("dónde") ||
-    m.includes("donde") ||
-    m.includes("ubicacion") ||
-    m.includes("ubicación")
+    m.includes("donde")
   ) {
-    const suc = catalogo.sucursales
-      .map((s) => `📍 ${s.nombre}\n   ${s.direccion}\n   Tel: ${s.telefono}`)
-      .join("\n\n");
-    return `Nuestras sucursales:\n\n${suc}\n\n🕐 Horario: Lunes a Viernes 8-18hs, Sábados 8-13hs`;
+    return `📍 Nuestras sucursales:\n\n${catalogo.sucursales.map((s) => `• ${s.nombre}\n  ${s.direccion}\n  Tel: ${s.telefono}`).join("\n\n")}`;
   }
 
-  if (m.includes("latex") || m.includes("látex")) {
-    const productos = catalogo.productos.filter(
-      (p) =>
-        p.categoria.toLowerCase().includes("látex") ||
-        p.categoria.toLowerCase().includes("latex"),
-    );
-    if (productos.length > 0) {
-      const lista = productos
-        .map(
-          (p) =>
-            `• ${p.nombre}: $${p.precio.toLocaleString("es-AR")} (${p.stock > 0 ? "✅ disponible" : "⚠️ sin stock"})`,
-        )
-        .join("\n");
-      return `🎨 Línea Látex:\n\n${lista}\n\nPara hacer un pedido llamanos:\n📞 ${catalogo.sucursales[0].telefono}`;
-    }
+  // Buscar producto específico en el catálogo
+  const productoEncontrado = catalogo.productos.find(
+    (p) =>
+      p.nombre.toLowerCase().includes(m) ||
+      m.includes(p.nombre.toLowerCase().split(" ")[0]),
+  );
+  if (productoEncontrado) {
+    return `🎨 ${productoEncontrado.nombre}\n💰 Precio: $${Number(productoEncontrado.precio).toLocaleString("es-AR")}\n📦 Stock: ${productoEncontrado.stock > 0 ? "✅ Disponible" : "⚠️ Sin stock"}\n\nPara hacer un pedido: 📞 ${tel}`;
   }
 
-  if (m.includes("esmalte")) {
-    const productos = catalogo.productos.filter((p) =>
-      p.categoria.toLowerCase().includes("esmalte"),
-    );
-    if (productos.length > 0) {
-      const lista = productos
-        .map(
-          (p) =>
-            `• ${p.nombre}: $${p.precio.toLocaleString("es-AR")} (${p.stock > 0 ? "✅ disponible" : "⚠️ sin stock"})`,
-        )
-        .join("\n");
-      return `🎨 Línea Esmaltes:\n\n${lista}\n\nPara hacer un pedido llamanos:\n📞 ${catalogo.sucursales[0].telefono}`;
-    }
+  if (m.includes("gracias") || m.includes("ok") || m.includes("perfecto")) {
+    return `¡De nada! 😊 Estamos para ayudarte. ${negocio.nombre} 🎨`;
   }
 
-  if (
-    m.includes("gracias") ||
-    m.includes("ok") ||
-    m.includes("perfecto") ||
-    m.includes("listo")
-  ) {
-    return `¡De nada! 😊 Estamos para ayudarte. Si necesitás algo más no dudes en escribirnos.\n\n${catalogo.negocio} 🎨`;
-  }
-
-  // Respuesta por defecto
-  return `Gracias por contactar a ${catalogo.negocio}. 🎨\n\nPodés preguntarme sobre precios, stock y horarios, o comunicarte directamente:\n\n📞 ${catalogo.sucursales[0].telefono}\n📍 ${catalogo.sucursales[0].direccion}\n\n🕐 Lunes a Viernes 8-18hs`;
+  return `Gracias por contactar a ${negocio.nombre}. 🎨\n\nPodés preguntarme sobre precios, stock y horarios, o llamarnos:\n📞 ${tel}\n\n🕐 ${config?.horario || "Lunes a Viernes 8-18hs"}`;
 }
 
-// ── Procesar con Claude (cuando haya API key) ─────────────────────────────────
-async function procesarConClaude(mensaje) {
-  const systemPrompt = `Sos un asistente comercial de ${catalogo.negocio}, una cadena de pinturerías argentina.
-Tu trabajo es responder consultas de clientes por WhatsApp de forma amigable, concisa y útil.
-Respondé siempre en español de Argentina, máximo 3-4 líneas.
+// ── Procesar con Claude ───────────────────────────────────────────────────────
+async function procesarConClaude(
+  mensaje,
+  negocio,
+  catalogo,
+  config,
+  historial,
+) {
+  const systemPrompt = `Sos un asistente comercial de ${negocio.nombre}, una pinturería argentina.
+Respondé en español de Argentina, de forma amigable y concisa (máximo 4 líneas).
 
-Horario: ${catalogo.horario}
-Sucursales: ${catalogo.sucursales.map((s) => `${s.nombre} (${s.direccion}, tel: ${s.telefono})`).join(" | ")}
+Horario: ${config?.horario || "Lunes a Viernes 8-18hs, Sábados 8-13hs"}
+Sucursales: ${catalogo.sucursales.map((s) => `${s.nombre} - ${s.direccion} - Tel: ${s.telefono}`).join(" | ")}
 
 Catálogo:
-${catalogo.productos.map((p) => `- ${p.nombre}: $${p.precio.toLocaleString("es-AR")} (stock: ${p.stock > 0 ? "disponible" : "sin stock"})`).join("\n")}
+${catalogo.productos.map((p) => `- ${p.nombre}: $${Number(p.precio).toLocaleString("es-AR")} (${p.stock > 0 ? "disponible" : "sin stock"})`).join("\n")}
 
 No inventes información. Si no sabés algo, dales el teléfono del local.`;
+
+  // Construir historial para Claude
+  const mensajesAPI = historial.map((m) => ({
+    role: m.rol === "cliente" ? "user" : "assistant",
+    content: m.contenido,
+  }));
+  mensajesAPI.push({ role: "user", content: mensaje });
 
   const response = await axios.post(
     "https://api.anthropic.com/v1/messages",
@@ -185,7 +313,7 @@ No inventes información. Si no sabés algo, dales el teléfono del local.`;
       model: "claude-sonnet-4-6",
       max_tokens: 300,
       system: systemPrompt,
-      messages: [{ role: "user", content: mensaje }],
+      messages: mensajesAPI,
     },
     {
       headers: {
@@ -199,9 +327,18 @@ No inventes información. Si no sabés algo, dales el teléfono del local.`;
   return response.data.content[0].text;
 }
 
+// ── Enviar mensaje por Twilio ─────────────────────────────────────────────────
+async function enviarMensaje(to, texto) {
+  await twilioClient.messages.create({
+    from: TWILIO_WHATSAPP_NUMBER,
+    to,
+    body: texto,
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  console.log(`📋 Negocio: ${catalogo.negocio}`);
+  console.log(`🗄️  Supabase: ${SUPABASE_URL ? "conectado" : "no configurado"}`);
   console.log(
     `🤖 Modo: ${ANTHROPIC_API_KEY && ANTHROPIC_API_KEY !== "tu_key_aqui" ? "Claude API" : "Respuestas predefinidas"}`,
   );
