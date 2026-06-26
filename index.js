@@ -44,7 +44,7 @@ app.post("/webhook", async (req, res) => {
     if (!from || !texto) return;
 
     console.log(`📩 [${to}] Mensaje de ${from}: ${texto}`);
-
+    console.log(`🔍 Buscando negocio con número: "${to}"`);
     // Identificar el negocio por el número de WhatsApp
     const negocio = await obtenerNegocio(to);
     if (!negocio) {
@@ -98,14 +98,19 @@ app.post("/webhook", async (req, res) => {
 });
 
 // ── Funciones de base de datos ────────────────────────────────────────────────
-
 async function obtenerNegocio(whatsappNumber) {
+  // Normalizar el número — probar con y sin prefijo whatsapp:
+  const numeroLimpio = whatsappNumber.replace("whatsapp:", "");
+
   const { data } = await supabase
     .from("negocios")
     .select("*")
-    .eq("whatsapp_number", whatsappNumber)
+    .or(
+      `whatsapp_number.eq.${whatsappNumber},whatsapp_number.eq.${numeroLimpio}`,
+    )
     .eq("activo", true)
     .single();
+
   return data;
 }
 
