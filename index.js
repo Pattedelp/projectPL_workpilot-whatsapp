@@ -53,15 +53,6 @@ app.post("/webhook", async (req, res) => {
     }
     console.log("✅ Negocio OK:", negocio.id);
 
-    const config = await obtenerConfiguracion(negocio.id);
-    console.log("✅ Config OK:", config?.id || "sin config");
-
-    const conversacion = await obtenerOCrearConversacion(negocio.id, from);
-    console.log("✅ Conversacion OK:", conversacion?.id || "null");
-
-    const historial = await obtenerHistorial(conversacion.id);
-    console.log("✅ Historial OK:", historial.length, "mensajes");
-
     // Verificar horario de atención
     const config = await obtenerConfiguracion(negocio.id);
     if (!estaEnHorario()) {
@@ -94,6 +85,15 @@ app.post("/webhook", async (req, res) => {
       historial,
       conversacion,
     );
+
+    const config = await obtenerConfiguracion(negocio.id);
+    console.log("✅ Config OK:", config?.id || "sin config");
+
+    const conversacion = await obtenerOCrearConversacion(negocio.id, from);
+    console.log("✅ Conversacion OK:", conversacion?.id || "null");
+
+    const historial = await obtenerHistorial(conversacion.id);
+    console.log("✅ Historial OK:", historial.length, "mensajes");
 
     // Guardar respuesta del agente
     await guardarMensaje(conversacion.id, "agente", respuesta);
