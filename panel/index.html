@@ -594,19 +594,27 @@
             </div>
             <div class="form-group">
               <label>Mensaje de bienvenida</label
-              ><input
-                type="text"
+              ><textarea
                 id="cfg-bienvenida"
                 placeholder="¡Hola! ¿Cuál es su consulta?"
-              />
+                rows="2"
+                style="resize: vertical; transition: height 0.2s"
+                onfocus="this.rows = 6"
+                onblur="this.rows = 2"
+                class="w-full bg-bg border border-border text-foreground text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary"
+              ></textarea>
             </div>
             <div class="form-group">
               <label>Mensaje fuera de horario</label
-              ><input
-                type="text"
+              ><textarea
                 id="cfg-fuera-horario"
                 placeholder="Estamos cerrados..."
-              />
+                rows="2"
+                style="resize: vertical; transition: height 0.2s"
+                onfocus="this.rows = 6"
+                onblur="this.rows = 2"
+                class="w-full bg-bg border border-border text-foreground text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary"
+              ></textarea>
             </div>
             <div class="form-group">
               <label>Teléfono para derivar consultas</label
