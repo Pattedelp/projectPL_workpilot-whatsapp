@@ -60,7 +60,7 @@ app.post("/webhook", async (req, res) => {
       await enviarMensaje(
         from,
         config?.mensaje_fuera_horario ||
-          "Estamos cerrados. Te respondemos pronto.",
+          `¡Hola! 👋 Gracias por escribirnos a Pinturería Sagitario.\n\nNuestro equipo está disponible Lunes a Viernes de 8 a 18hs y Sábados de 8 a 13hs, pero no te quedés sin tu pedido — podés ver todos nuestros productos y comprar online las 24hs:\n\n🛒 https://pintureriasagitario.com.ar\n\nTe respondemos a la brevedad cuando abramos. 😊`,
       );
       return;
     }
@@ -386,7 +386,7 @@ function respuestaPredefinida(
   if (m.includes("hola") || m.includes("buenas") || m.includes("buen")) {
     return (
       config?.mensaje_bienvenida ||
-      `¡Hola! 👋 Bienvenido a ${negocio.nombre}. ¿Cuál es su consulta?\n\n• 🎨 Precios\n• 📦 Stock\n• 🕐 Horarios\n• 📍 Ubicaciones`
+      `¡Hola! 👋 Bienvenido a ${negocio.nombre}. ¿Cuál es su consulta?\n\n• 🎨 Precios\n• 📦 Stock\n• 🕐 Horarios\n• 📍 Ubicaciones\n• 📞 Formas de contacto\n• 🛒 Tienda digital: https://pintureriasagitario.com.ar`
     );
   }
 
@@ -412,6 +412,15 @@ function respuestaPredefinida(
   ) {
     const disponibles = catalogo.productos.filter((p) => p.stock > 0).length;
     return `📦 En ${localNombre} tenemos ${disponibles} productos disponibles.\n\nConsultá por uno específico o llamanos:\n📞 ${tel}`;
+  }
+
+  if (
+    m.includes("contacto") ||
+    m.includes("teléfono") ||
+    m.includes("telefono") ||
+    m.includes("llamar")
+  ) {
+    return `📞 Contacto de ${localNombre}:\n\nTeléfono: ${tel}\n📍 ${sucursalCliente?.direccion || ""}\n🛒 Tienda online: https://pintureriasagitario.com.ar\n🕐 ${config?.horario || "Lunes a Viernes 8-18hs"}`;
   }
 
   if (m.includes("horario") || m.includes("abren") || m.includes("cierran")) {
