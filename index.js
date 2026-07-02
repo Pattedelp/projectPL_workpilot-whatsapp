@@ -359,6 +359,29 @@ function respuestaPredefinida(
     sucursalCliente?.telefono || catalogo.sucursales[0]?.telefono || "";
   const localNombre =
     sucursalCliente?.nombre || catalogo.sucursales[0]?.nombre || negocio.nombre;
+  // Links ecommerce Sagitario
+  const ECOMMERCE = "https://pintureriasagitario.com.ar";
+  const LINKS = {
+    latex: `${ECOMMERCE}/categoria-producto/pintura/latex/`,
+    esmalte: `${ECOMMERCE}/categoria-producto/pintura/esmaltes/`,
+    impermeabilizante: `${ECOMMERCE}/categoria-producto/pintura/impermeabilizantes/`,
+    fondo: `${ECOMMERCE}/categoria-producto/pintura/fondos/`,
+    solvente: `${ECOMMERCE}/categoria-producto/pintura/solventes/`,
+    herramienta: `${ECOMMERCE}/categoria-producto/herramientas/`,
+    general: `${ECOMMERCE}/categoria-producto/pintura/`,
+  };
+
+  function linkProducto(nombre) {
+    const n = nombre.toLowerCase();
+    if (n.includes("látex") || n.includes("latex")) return LINKS.latex;
+    if (n.includes("esmalte")) return LINKS.esmalte;
+    if (n.includes("impermeab")) return LINKS.impermeabilizante;
+    if (n.includes("fondo") || n.includes("antióxido")) return LINKS.fondo;
+    if (n.includes("solvente") || n.includes("aguarrás")) return LINKS.solvente;
+    if (n.includes("rodillo") || n.includes("pincel") || n.includes("brocha"))
+      return LINKS.herramienta;
+    return LINKS.general;
+  }
 
   if (m.includes("hola") || m.includes("buenas") || m.includes("buen")) {
     return (
@@ -378,7 +401,7 @@ function respuestaPredefinida(
       .slice(0, 5)
       .map((p) => `• ${p.nombre}: $${Number(p.precio).toLocaleString("es-AR")}`)
       .join("\n");
-    return `🎨 Algunos precios en ${localNombre}:\n\n${lista}\n\nPara más info: 📞 ${tel}`;
+    return `🎨 Algunos precios en ${localNombre}:\n\n${lista}\n\n🛒 Ver todos los productos: ${LINKS.general}\n📞 Para más info: 📞 ${tel}`;
   }
 
   if (
@@ -411,7 +434,7 @@ function respuestaPredefinida(
       .some((palabra) => palabra.length > 3 && m.includes(palabra)),
   );
   if (productoEncontrado) {
-    return `🎨 ${productoEncontrado.nombre}\n💰 $${Number(productoEncontrado.precio).toLocaleString("es-AR")}\n📦 ${productoEncontrado.stock > 0 ? "✅ Disponible en " + localNombre : "⚠️ Sin stock actualmente"}\n\n📞 ${tel}`;
+    return `🎨 ${productoEncontrado.nombre}\n💰 $${Number(productoEncontrado.precio).toLocaleString("es-AR")}\n📦 ${productoEncontrado.stock > 0 ? "✅ Disponible en " + localNombre : "⚠️ Sin stock actualmente"}\n\n🛒 Ver en tienda: ${linkProducto(productoEncontrado.nombre)}\n📞 ${tel}`;
   }
 
   if (m.includes("gracias") || m.includes("ok") || m.includes("perfecto")) {
